@@ -32,13 +32,15 @@ def build_preprocessor() -> ColumnTransformer:
         steps=[("scaler", StandardScaler())]
     )
     categorical_transformer = Pipeline(
-        steps=[("ohe", OneHotEncoder(handle_unknown="ignore", sparse=False))]
+        steps=[("ohe", OneHotEncoder(handle_unknown="ignore"))]
     )
+    # sparse_threshold=0 forces dense output regardless of individual transformer output
     preprocessor = ColumnTransformer(
         transformers=[
             ("num", numeric_transformer, NUMERIC_FEATURES),
             ("cat", categorical_transformer, CATEGORICAL_FEATURES),
-        ]
+        ],
+        sparse_threshold=0,
     )
     return preprocessor
 
