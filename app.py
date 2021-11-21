@@ -1,4 +1,5 @@
 import logging
+import logging.handlers
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -9,6 +10,19 @@ from schemas import PredictRequest, PredictResponse
 logger = logging.getLogger(__name__)
 
 MODEL_PATH = Path("models/model.joblib")
+LOG_PATH = Path("predictions.log")
+
+# Rotating file handler for flat prediction log — 5 MB per file, 3 backups
+_pred_logger = logging.getLogger("predictions")
+_pred_logger.setLevel(logging.INFO)
+_pred_logger.propagate = False
+_handler = logging.handlers.RotatingFileHandler(
+    LOG_PATH, maxBytes=5 * 1024 * 1024, backupCount=3
+)
+_handler.setFormatter(
+    logging.Formatter("%(asctime)s %(message)s")
+)
+_pred_logger.addHandler(_handler)
 
 app = FastAPI(title="Stratum", version="0.1.0")
 
@@ -62,4 +76,17 @@ def predict(body: PredictRequest, model=Depends(get_model)) -> PredictResponse:
     )
     prediction = int(model.predict(row)[0])
     probability = model.predict_proba(row)[0].tolist()
+
+    _pred_logger.info(
+        "prediction=%d probability=%s age=%d education=%s occupation=%s "
+        "hours_per_week=%d capital_gain=%d capital_loss=%d",
+        prediction,
+        probability,
+        body.age,
+        body.education,
+        body.occupation,
+        body.hours_per_week,
+        body.capital_gain,
+        body.capital_loss,
+    )
     return PredictResponse(prediction=prediction, probability=probability)
