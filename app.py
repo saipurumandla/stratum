@@ -1,41 +1,35 @@
 import logging
-import logging.handlers
+import os
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 
+import db
+from logger import configure_logging
 from model_loader import load_model
 from schemas import PredictRequest, PredictResponse
 
 logger = logging.getLogger(__name__)
 
-MODEL_PATH = Path("models/model.joblib")
-LOG_PATH = Path("predictions.log")
-
-# Rotating file handler for flat prediction log — 5 MB per file, 3 backups
-_pred_logger = logging.getLogger("predictions")
-_pred_logger.setLevel(logging.INFO)
-_pred_logger.propagate = False
-_handler = logging.handlers.RotatingFileHandler(
-    LOG_PATH, maxBytes=5 * 1024 * 1024, backupCount=3
-)
-_handler.setFormatter(
-    logging.Formatter("%(asctime)s %(message)s")
-)
-_pred_logger.addHandler(_handler)
+MODEL_PATH = Path(os.environ.get("MODEL_PATH", "models/model.joblib"))
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 app = FastAPI(title="Stratum", version="0.1.0")
 
 
 @app.on_event("startup")
 def startup_event() -> None:
-    """Load the model artifact into app state at startup."""
+    """Load the model artifact and initialise DB engine at startup."""
+    configure_logging(os.environ.get("LOG_LEVEL", "INFO"))
     try:
         app.state.model = load_model(MODEL_PATH)
         logger.info("model loaded path=%s", MODEL_PATH)
     except Exception as exc:
-        logger.error("failed to load model: %s", exc)
+        logger.error("failed to load model error=%s", exc)
         app.state.model = None
+    if DATABASE_URL:
+        db.init_engine(DATABASE_URL)
+        logger.info("db engine ready")
 
 
 def get_model(request: Request):
@@ -77,16 +71,15 @@ def predict(body: PredictRequest, model=Depends(get_model)) -> PredictResponse:
     prediction = int(model.predict(row)[0])
     probability = model.predict_proba(row)[0].tolist()
 
-    _pred_logger.info(
-        "prediction=%d probability=%s age=%d education=%s occupation=%s "
-        "hours_per_week=%d capital_gain=%d capital_loss=%d",
+    if DATABASE_URL:
+        db.store_prediction(
+            input_data=body.dict(),
+            prediction=prediction,
+            probability=probability,
+        )
+    logger.info(
+        "prediction completed prediction=%d prob_high=%.4f",
         prediction,
-        probability,
-        body.age,
-        body.education,
-        body.occupation,
-        body.hours_per_week,
-        body.capital_gain,
-        body.capital_loss,
+        probability[1],
     )
     return PredictResponse(prediction=prediction, probability=probability)
