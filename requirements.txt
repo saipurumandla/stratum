@@ -1,5 +1,18 @@
+# Phase 1 — Jun 2021: core ML stack
 scikit-learn==0.24.2
 pandas==1.2.5
 joblib==1.0.1
 numpy==1.20.3
 pytest==6.2.4
+
+# Phase 2 — Sep 2021: serving API
+fastapi==0.70.0
+uvicorn==0.15.0
+pydantic==1.9.0
+httpx==0.20.0
+
+# Phase 3 — Jan 2022: storage + structured logging
+psycopg2-binary==2.9.3
+SQLAlchemy==1.4.31
+alembic==1.7.7
+python-json-logger==2.0.4
