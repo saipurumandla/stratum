@@ -8,7 +8,6 @@ pytest==6.2.4
 # Phase 2 — Sep 2021: serving API
 fastapi==0.70.0
 uvicorn==0.15.0
-pydantic==1.9.0
 httpx==0.20.0
 
 # Phase 3 — Jan 2022: storage + structured logging
@@ -21,3 +20,9 @@ python-json-logger==2.0.4
 evidently==0.3.2
 prometheus_client==0.15.0
 pytest-asyncio==0.20.3
+
+# Phase 5 — Feb 2024: retraining + CI/CD
+APScheduler==3.10.4
+structlog==23.3.0
+pydantic==2.6.1
+pydantic-settings==2.2.1

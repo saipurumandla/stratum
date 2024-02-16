@@ -94,7 +94,7 @@ def predict(body: PredictRequest, model=Depends(get_model)) -> PredictResponse:
 
     if DATABASE_URL:
         db.store_prediction(
-            input_data=body.dict(),
+            input_data=body.model_dump(),
             prediction=prediction,
             probability=probability,
         )
