@@ -1,0 +1,44 @@
+stages:
+  - test
+  - train
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  key:
+    files:
+      - requirements.txt
+  paths:
+    - .cache/pip/
+
+test:
+  stage: test
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.11", "3.12"]
+  image: python:${PYTHON_VERSION}-slim
+  script:
+    - pip install -r requirements.txt
+    - pytest tests/ -v
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+train:
+  stage: train
+  image: python:3.12-slim
+  needs:
+    - job: test
+      parallel:
+        matrix:
+          - PYTHON_VERSION: "3.12"
+  script:
+    - pip install -r requirements.txt
+    - python train.py
+  artifacts:
+    paths:
+      - models/
+    expire_in: 30 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
