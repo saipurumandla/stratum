@@ -7,15 +7,11 @@ from typing import AsyncGenerator
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import Response
-from prometheus_client import (
-    CONTENT_TYPE_LATEST,
-    Counter,
-    Gauge,
-    generate_latest,
-)
+from prometheus_client import CONTENT_TYPE_LATEST
 
 import db
 from logger import configure_logging
+from metrics import PREDICTIONS_TOTAL, get_metrics_output
 from model_loader import load_model
 from schemas import PredictRequest, PredictResponse
 
@@ -23,16 +19,6 @@ logger = logging.getLogger(__name__)
 
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", "models/model.joblib"))
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
-
-# Prometheus metrics — module-level so they persist across requests
-PREDICTIONS_TOTAL = Counter(
-    "predictions_total",
-    "Total number of predictions served",
-)
-DRIFT_DETECTED = Gauge(
-    "drift_detected",
-    "1 if drift was detected in the last monitoring run, 0 otherwise",
-)
 
 
 @asynccontextmanager
@@ -111,4 +97,4 @@ def predict(body: PredictRequest, model=Depends(get_model)) -> PredictResponse:
 @app.get("/metrics")
 def metrics() -> Response:
     """Expose Prometheus metrics for scraping."""
-    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    return Response(content=get_metrics_output(), media_type=CONTENT_TYPE_LATEST)
